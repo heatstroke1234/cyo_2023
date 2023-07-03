@@ -30,8 +30,7 @@ movies_file <- "ml-10M100K/movies.dat"
 if(!file.exists(movies_file))
   unzip(dl, movies_file)
 
-ratings <- as.data.frame(str_split(read_lines(ratings_file), fixed("::"), simplify = TRUE),
-                         stringsAsFactors = FALSE)
+ratings <- as.data.frame(str_split(read_lines(ratings_file), fixed("::"), simplify = TRUE), stringsAsFactors = FALSE)
 colnames(ratings) <- c("userId", "movieId", "rating", "timestamp")
 ratings <- ratings %>%
   mutate(userId = as.integer(userId),
@@ -39,11 +38,9 @@ ratings <- ratings %>%
          rating = as.numeric(rating),
          timestamp = as.integer(timestamp))
 
-movies <- as.data.frame(str_split(read_lines(movies_file), fixed("::"), simplify = TRUE),
-                        stringsAsFactors = FALSE)
+movies <- as.data.frame(str_split(read_lines(movies_file), fixed("::"), simplify = TRUE), stringsAsFactors = FALSE)
 colnames(movies) <- c("movieId", "title", "genres")
-movies <- movies %>%
-  mutate(movieId = as.integer(movieId))
+movies <- movies %>% mutate(movieId = as.integer(movieId))
 
 movielens <- left_join(ratings, movies, by = "movieId")
 
