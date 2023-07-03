@@ -1,4 +1,6 @@
+################################################################
 # The following code is provided by the edx course and platform:
+################################################################
 
 ##########################################################
 # Create edx and final_holdout_test sets 
@@ -60,3 +62,7 @@ removed <- anti_join(temp, final_holdout_test)
 edx <- rbind(edx, removed)
 
 rm(dl, ratings, movies, test_index, temp, movielens, removed)
+
+################################################################
+# The following code is my actual project:
+################################################################
