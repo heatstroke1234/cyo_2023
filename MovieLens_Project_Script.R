@@ -67,7 +67,7 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 # The following code is my actual project:
 ################################################################
 # Further division of edx into training and testing sets
-set.seed(1, sample.kind = "Rounding")
+set.seed(1, sample.kind = "Rounding") # using R 3.6 or later
 test_index <- createDataPartition(y = edx$rating, times = 1, p = 0.1, list = FALSE)
 train_set <- edx[-test_index,]
 temp <- edx[test_index,]
@@ -83,5 +83,29 @@ train_set <- rbind(train_set, removed)
 
 rm(test_index, temp, removed)
 
-# Starting data exploration
+### Starting data exploration
+
+# Statistical summary of the dataset edx
 summary(edx)
+
+# Output number of users versus number of movies
+summarize(edx, num_users = n_distinct(userId), num_movies = n_distinct(movieId))
+
+# Graph top movies
+edx %>%
+  group_by(title) %>%
+  summarize(count = n()) %>%
+  top_n(10, count) %>%
+  arrange(-count) %>%
+  ggplot(aes(count, reorder(title, count))) +
+  geom_bar(color = "gray", fill = "firebrick", stat = "identity") +
+  labs(x = "Count", y = "Movies", caption = "Source: edx dataset") +
+  ggtitle("Most Popular Movies")
+  
+# Graph number of ratings per rating
+edx %>%
+  ggplot(aes(rating)) +
+  geom_bar(color = "gray", fill = "firebrick") +
+  labs(x = "Ratings", y = "Frequency", caption = "Source: edx dataset") +
+  scale_x_continuous(breaks = seq(0, 5, by = 0.5)) +
+  ggtitle("Rating Count Per Rating")
