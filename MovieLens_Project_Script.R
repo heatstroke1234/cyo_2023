@@ -109,3 +109,24 @@ edx %>%
   labs(x = "Ratings", y = "Frequency", caption = "Source: edx dataset") +
   scale_x_continuous(breaks = seq(0, 5, by = 0.5)) +
   ggtitle("Rating Count Per Rating")
+
+# Graph number of ratings versus users
+edx %>% 
+  group_by(userId) %>%
+  summarize(count = n()) %>%
+  ggplot(aes(count)) +
+  geom_histogram(color = "gray", fill = "firebrick", bins = 50) +
+  labs(x = "Ratings", y = "Users", caption = "Source: edx dataset") +
+  ggtitle("Number of Ratings Versus Users") +
+  scale_x_log10()
+
+# Graph number of ratings versus movies
+edx %>% 
+  group_by(movieId) %>%
+  summarize(count = n()) %>%
+  ggplot(aes(count)) +
+  geom_histogram(color = "gray", fill = "firebrick", bins = 50) +
+  labs(x = "Ratings", y = "Movies", caption = "Source: edx dataset") +
+  ggtitle("Number of Ratings Versus Movies") +
+  scale_x_log10()
+
