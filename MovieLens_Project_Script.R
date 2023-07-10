@@ -66,3 +66,22 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 ################################################################
 # The following code is my actual project:
 ################################################################
+# Further division of edx into training and testing sets
+set.seed(1, sample.kind = "Rounding")
+test_index <- createDataPartition(y = edx$rating, times = 1, p = 0.1, list = FALSE)
+train_set <- edx[-test_index,]
+temp <- edx[test_index,]
+
+# Matching userId and movieId in both train and test sets
+test_set <- temp %>%
+  semi_join(train_set, by = "movieId") %>%
+  semi_join(train_set, by = "userId")
+
+# Adding rows back into train set
+removed <- anti_join(temp, test_set)
+train_set <- rbind(train_set, removed)
+
+rm(test_index, temp, removed)
+
+# Starting data exploration
+summary(edx)
