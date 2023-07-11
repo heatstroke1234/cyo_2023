@@ -228,13 +228,38 @@ lambda
 regularized_rmse <- min(rmses)
 regularized_rmse
 
+# Applying matrix factorization using the recosystem package
+if(!require(recosystem)) install.packages("recosystem", repos = "http://cran.us.r-project.org")
+library(recosystem)
+set.seed(1, sample.kind = "Rounding") # using R 3.6 or later
+reco_train <- with(train_set, data_memory(user_index = userId, item_index = movieId, rating = rating))
+reco_test <- with(test_set, data_memory(user_index = userId, item_index = movieId, rating = rating))
+reco <- Reco()
+
+reco_para <- reco$tune(reco_train, opts = list(dim = c(20, 30),
+                                            costp_l2 = c(0.01, 0.1),
+                                            costq_l2 = c(0.01, 0.1),
+                                            lrate = c(0.01, 0.1),
+                                            nthread = 4,
+                                            niter = 10))
+
+reco$train(reco_train, opts = c(reco_para$min, nthread = 4, niter = 30))
+reco_results <- reco$predict(reco_test, out_memory())
+
+# RMSE calculated with matrix factorization
+factorization_rmse <- RMSE(reco_results, test_set$rating)
+factorization_rmse
+
 ### Final results
+
+# Table made using the reactable package
 if(!require(reactable)) install.packages("reactable", repos = "http://cran.us.r-project.org")
 library(reactable)
 Methods <- c("Just the mean", "Mean and movie bias", "Mean, movie, and user bias", 
-             "Mean, movie, user, and time bias", "Regularized movie, user, and time effects")
+             "Mean, movie, user, and time bias", "Regularized movie, user, and time effects",
+             "Matrix factorization using recosystem")
 RMSE <- c(round(mean_rmse, 7), round(movie_bias_rmse, 7), round(user_bias_rmse, 7), 
-          round(time_bias_rmse, 7), round(regularized_rmse, 7))
+          round(time_bias_rmse, 7), round(regularized_rmse, 7), round(factorization_rmse, 7))
 final_results <- data.frame(Methods, RMSE)
 reactable(final_results,
   highlight = TRUE,
