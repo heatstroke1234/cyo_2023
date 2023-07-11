@@ -217,7 +217,7 @@ rmses <- sapply(lambdas, function(x){
   return(rmse(predicted_ratings, test_set$rating))
 })
 
-# Plotting lambdas versus rmses
+# Plotting lambdas versus RMSEs
 qplot(lambdas, rmses, color = I("red"))
 
 # Finding which lambda has the lowest RMSE
@@ -227,3 +227,22 @@ lambda
 # Selecting the lambda with the lowest RMSE
 regularized_rmse <- min(rmses)
 regularized_rmse
+
+### Final results
+if(!require(reactable)) install.packages("reactable", repos = "http://cran.us.r-project.org")
+library(reactable)
+Methods <- c("Just the mean", "Mean and movie bias", "Mean, movie, and user bias", 
+             "Mean, movie, user, and time bias", "Regularized movie, user, and time effects")
+RMSE <- c(round(mean_rmse, 7), round(movie_bias_rmse, 7), round(user_bias_rmse, 7), 
+          round(time_bias_rmse, 7), round(regularized_rmse, 7))
+final_results <- data.frame(Methods, RMSE)
+reactable(final_results,
+  highlight = TRUE,
+  bordered = TRUE,
+  theme = reactableTheme(
+    borderColor = "#dfe2e5",
+    highlightColor = "#f0f5f9",
+    cellPadding = "8px 12px",
+    style = list(fontFamily = "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif"),
+  )
+)
