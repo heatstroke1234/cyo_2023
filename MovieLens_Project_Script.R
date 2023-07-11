@@ -130,3 +130,63 @@ edx %>%
   ggtitle("Number of Ratings Versus Movies") +
   scale_x_log10()
 
+### Starting data analysis
+
+# Function to calculate RMSE
+rmse <- function(true_ratings, predicted_ratings) {
+  sqrt(mean((true_ratings - predicted_ratings)^2))
+}
+
+# Mean of all ratings
+mean_rating <- mean(train_set$rating)
+mean_rating
+
+# RMSE calculated with just the mean
+mean_rmse <- rmse(test_set$rating, mean_rating)
+mean_rmse
+
+# Add movie bias to calculation
+bi <- train_set %>%
+  group_by(movieId) %>%
+  summarize(b_i = mean(rating - mean_rating))
+predicted_ratings <- mean_rating + test_set %>%
+  left_join(bi, by = "movieId") %>%
+  pull(b_i)
+
+# RMSE calculated with mean and movie bias
+movie_bias_rmse <- rmse(predicted_ratings, test_set$rating)
+movie_bias_rmse
+
+# Add user bias to calculation
+bu <- train_set %>%
+  left_join(bi, by = "movieId") %>%
+  group_by(userId) %>%
+  summarize(b_u = mean(rating - mean_rating - b_i))
+predicted_ratings <- test_set %>%
+  left_join(bi, by = "movieId") %>%
+  left_join(bu, by = "userId") %>%
+  mutate(pred = mean_rating + b_i + b_u) %>%
+  pull(pred)
+
+# RMSE calculated with mean, movie, and user bias
+user_bias_rmse <- rmse(predicted_ratings, test_set$rating)
+user_bias_rmse
+
+# Add time bias to calculation
+bt <- train_set %>%
+  mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
+  left_join(bi, by = "movieId") %>%
+  left_join(bu, by = "userId") %>%
+  group_by(date) %>%
+  summarize(b_t = mean(rating - mean_rating - b_i - b_u))
+predicted_ratings <- test_set %>%
+  mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
+  left_join(bi, by = "movieId") %>%
+  left_join(bu, by = "userId") %>%
+  left_join(bt, by = "date") %>%
+  mutate(pred = mean_rating + b_i + b_u + b_t) %>%
+  pull(pred)
+
+# RMSE calculated with mean, movie, user, and time bias
+time_bias_rmse <- rmse(predicted_ratings, test_set$rating)
+time_bias_rmse
