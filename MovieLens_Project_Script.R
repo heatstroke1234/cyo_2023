@@ -190,3 +190,40 @@ predicted_ratings <- test_set %>%
 # RMSE calculated with mean, movie, user, and time bias
 time_bias_rmse <- rmse(predicted_ratings, test_set$rating)
 time_bias_rmse
+
+# Applying data regularization
+lambdas <- seq(0, 10, 0.25)
+rmses <- sapply(lambdas, function(x){
+  b_i <- train_set %>%
+    group_by(movieId) %>%
+    summarize(b_i = sum(rating - mean_rating)/(n() + x)) # adding movie bias
+  b_u <- train_set %>%
+    left_join(b_i, by = "movieId") %>%
+    group_by(userId) %>%
+    summarize(b_u = sum(rating - b_i - mean_rating)/(n() + x)) # adding user bias
+  b_t <- train_set %>%
+    mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
+    left_join(b_i, by = "movieId") %>%
+    left_join(b_u, by = "userId") %>%
+    group_by(date) %>%
+    summarize(b_t = mean(rating - b_i - b_u - mean_rating)/(n() + x)) # adding time bias
+  predicted_ratings <- test_set %>%
+    mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
+    left_join(b_i, by = "movieId") %>%
+    left_join(b_u, by = "userId") %>%
+    left_join(b_t, by = "date") %>%
+    mutate(pred = mean_rating + b_i + b_u + b_t) %>%
+    pull(pred)
+  return(rmse(predicted_ratings, test_set$rating))
+})
+
+# Plotting lambdas versus rmses
+qplot(lambdas, rmses, color = I("red"))
+
+# Finding which lambda has the lowest RMSE
+lambda <- lambdas[which.min(rmses)]
+lambda
+
+# Selecting the lambda with the lowest RMSE
+regularized_rmse <- min(rmses)
+regularized_rmse
