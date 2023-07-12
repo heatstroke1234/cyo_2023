@@ -8,8 +8,10 @@
 
 # Note: this process could take a couple of minutes
 
-if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
-if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(tidyverse)) install.packages("tidyverse", 
+                                         repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", 
+                                     repos = "http://cran.us.r-project.org")
 
 library(tidyverse)
 library(caret)
@@ -32,7 +34,8 @@ movies_file <- "ml-10M100K/movies.dat"
 if(!file.exists(movies_file))
   unzip(dl, movies_file)
 
-ratings <- as.data.frame(str_split(read_lines(ratings_file), fixed("::"), simplify = TRUE), stringsAsFactors = FALSE)
+ratings <- as.data.frame(str_split(read_lines(ratings_file), fixed("::"), 
+                                   simplify = TRUE), stringsAsFactors = FALSE)
 colnames(ratings) <- c("userId", "movieId", "rating", "timestamp")
 ratings <- ratings %>%
   mutate(userId = as.integer(userId),
@@ -40,7 +43,8 @@ ratings <- ratings %>%
          rating = as.numeric(rating),
          timestamp = as.integer(timestamp))
 
-movies <- as.data.frame(str_split(read_lines(movies_file), fixed("::"), simplify = TRUE), stringsAsFactors = FALSE)
+movies <- as.data.frame(str_split(read_lines(movies_file), fixed("::"), 
+                                  simplify = TRUE), stringsAsFactors = FALSE)
 colnames(movies) <- c("movieId", "title", "genres")
 movies <- movies %>% mutate(movieId = as.integer(movieId))
 
@@ -48,7 +52,8 @@ movielens <- left_join(ratings, movies, by = "movieId")
 
 # Final hold-out test set will be 10% of MovieLens data
 set.seed(1, sample.kind="Rounding") # using R 3.6 or later
-test_index <- createDataPartition(y = movielens$rating, times = 1, p = 0.1, list = FALSE)
+test_index <- createDataPartition(y = movielens$rating, times = 1, 
+                                  p = 0.1, list = FALSE)
 edx <- movielens[-test_index,]
 temp <- movielens[test_index,]
 
@@ -68,7 +73,8 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 ################################################################
 # Further division of edx into training and testing sets
 set.seed(1, sample.kind = "Rounding") # using R 3.6 or later
-test_index <- createDataPartition(y = edx$rating, times = 1, p = 0.1, list = FALSE)
+test_index <- createDataPartition(y = edx$rating, times = 1, 
+                                  p = 0.1, list = FALSE)
 train_set <- edx[-test_index,]
 temp <- edx[test_index,]
 
@@ -200,13 +206,15 @@ rmses <- sapply(lambdas, function(x){
   b_u <- train_set %>%
     left_join(b_i, by = "movieId") %>%
     group_by(userId) %>%
-    summarize(b_u = sum(rating - b_i - mean_rating)/(n() + x)) # adding user bias
+    summarize(b_u = sum(rating - b_i - 
+                          mean_rating)/(n() + x)) # adding user bias
   b_t <- train_set %>%
     mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
     left_join(b_i, by = "movieId") %>%
     left_join(b_u, by = "userId") %>%
     group_by(date) %>%
-    summarize(b_t = mean(rating - b_i - b_u - mean_rating)/(n() + x)) # adding time bias
+    summarize(b_t = mean(rating - b_i - b_u - 
+                           mean_rating)/(n() + x)) # adding time bias
   predicted_ratings <- test_set %>%
     mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
     left_join(b_i, by = "movieId") %>%
@@ -229,37 +237,68 @@ regularized_rmse <- min(rmses)
 regularized_rmse
 
 # Applying matrix factorization using the recosystem package
-if(!require(recosystem)) install.packages("recosystem", repos = "http://cran.us.r-project.org")
+if(!require(recosystem)) install.packages(
+  "recosystem", repos = "http://cran.us.r-project.org")
 library(recosystem)
 set.seed(1, sample.kind = "Rounding") # using R 3.6 or later
-reco_train <- with(train_set, data_memory(user_index = userId, item_index = movieId, rating = rating))
-reco_test <- with(test_set, data_memory(user_index = userId, item_index = movieId, rating = rating))
+reco_train <- with(train_set, data_memory(user_index = userId, 
+                                          item_index = movieId, 
+                                          rating = rating))
+reco_test <- with(test_set, data_memory(user_index = userId, 
+                                        item_index = movieId, rating = rating))
 reco <- Reco()
 
-reco_para <- reco$tune(reco_train, opts = list(dim = c(20, 30),
-                                            costp_l2 = c(0.01, 0.1),
-                                            costq_l2 = c(0.01, 0.1),
-                                            lrate = c(0.01, 0.1),
-                                            nthread = 4,
-                                            niter = 10))
+reco_para <- reco$tune(reco_train, opts = list(dim = c(20, 30), 
+                                               costp_l2 = c(0.01, 0.1),
+                                               costq_l2 = c(0.01, 0.1), 
+                                               lrate = c(0.01, 0.1),
+                                               nthread = 4, niter = 10))
 
 reco$train(reco_train, opts = c(reco_para$min, nthread = 4, niter = 30))
-reco_results <- reco$predict(reco_test, out_memory())
+reco_first <- reco$predict(reco_test, out_memory())
 
 # RMSE calculated with matrix factorization
-factorization_rmse <- RMSE(reco_results, test_set$rating)
+factorization_rmse <- RMSE(reco_first, test_set$rating)
 factorization_rmse
+
+# Using matrix factorization on final holdout test
+set.seed(1, sample.kind = "Rounding") # using R 3.6 or later
+reco_edx <- with(edx, data_memory(user_index = userId, item_index = movieId, 
+                                  rating = rating))
+reco_final_holdout <- with(final_holdout_test, data_memory(user_index = userId, 
+                                                           item_index = movieId, 
+                                                           rating = rating))
+reco <- Reco()
+
+reco_para <- reco$tune(reco_edx, opts = list(dim = c(20, 30), 
+                                             costp_l2 = c(0.01, 0.1),
+                                             costq_l2 = c(0.01, 0.1), 
+                                             lrate = c(0.01, 0.1),
+                                             nthread = 4, niter = 10))
+
+reco$train(reco_edx, opts = c(reco_para$min, nthread = 4, niter = 30))
+reco_final <- reco$predict(reco_final_holdout, out_memory())
+
+# Generating final RMSE
+final_rmse <- RMSE(reco_final, final_holdout_test$rating)
+final_rmse
 
 ### Final results
 
 # Table made using the reactable package
-if(!require(reactable)) install.packages("reactable", repos = "http://cran.us.r-project.org")
+if(!require(reactable)) install.packages("reactable", 
+                                         repos = "http://cran.us.r-project.org")
 library(reactable)
-Methods <- c("Just the mean", "Mean and movie bias", "Mean, movie, and user bias", 
-             "Mean, movie, user, and time bias", "Regularized movie, user, and time effects",
-             "Matrix factorization using recosystem")
-RMSE <- c(round(mean_rmse, 7), round(movie_bias_rmse, 7), round(user_bias_rmse, 7), 
-          round(time_bias_rmse, 7), round(regularized_rmse, 7), round(factorization_rmse, 7))
+Methods <- c("Just the mean", "Mean and movie bias", 
+             "Mean, movie, and user bias", "Mean, movie, user, and time bias", 
+             "Regularized movie, user, and time effects",
+             "Matrix factorization using recosystem", 
+             "Final holdout test 
+             (generated using matrix factorization)") # first column
+RMSE <- c(round(mean_rmse, 7), round(movie_bias_rmse, 7), 
+          round(user_bias_rmse, 7), round(time_bias_rmse, 7), 
+          round(regularized_rmse, 7), round(factorization_rmse, 7), 
+          round(final_rmse, 7)) # second column
 final_results <- data.frame(Methods, RMSE)
 reactable(final_results,
   highlight = TRUE,
@@ -268,6 +307,7 @@ reactable(final_results,
     borderColor = "#dfe2e5",
     highlightColor = "#f0f5f9",
     cellPadding = "8px 12px",
-    style = list(fontFamily = "-apple-system, BlinkMacSystemFont, Segoe UI, Helvetica, Arial, sans-serif"),
+    style = list(fontFamily = "-apple-system, BlinkMacSystemFont, 
+                 Segoe UI, Helvetica, Arial, sans-serif"),
+    )
   )
-)
