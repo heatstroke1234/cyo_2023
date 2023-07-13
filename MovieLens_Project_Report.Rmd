@@ -3,6 +3,7 @@ title: "MovieLens Project Report"
 author: "Nikhil Venkatachalam"
 date: "`r Sys.Date()`"
 output: pdf_document
+always_allow_html: true
 ---
 
 # Header 1
