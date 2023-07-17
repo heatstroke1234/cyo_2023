@@ -289,6 +289,12 @@ final_rmse
 if(!require(reactable)) install.packages("reactable", 
                                          repos = "http://cran.us.r-project.org")
 library(reactable)
+if(!require(webshot2)) install.packages("webshot2", 
+                                         repos = "http://cran.us.r-project.org")
+library(webshot2)
+if(!require(htmlwidgets)) install.packages("htmlwidgets", 
+                                        repos = "http://cran.us.r-project.org")
+library(htmlwidgets)
 Methods <- c("Just the mean", "Mean and movie bias", 
              "Mean, movie, and user bias", "Mean, movie, user, and time bias", 
              "Regularized movie, user, and time effects",
@@ -311,3 +317,6 @@ table <- reactable(final_results,
                  Segoe UI, Helvetica, Arial, sans-serif"),
     )
   )
+saveWidget(widget = table, file = "table_html.html", selfcontained = TRUE)
+webshot(url = "table_html.html", file = "final_table.png", delay = 0.1, 
+        vwidth = 1245)
