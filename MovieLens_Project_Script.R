@@ -300,7 +300,7 @@ RMSE <- c(round(mean_rmse, 7), round(movie_bias_rmse, 7),
           round(regularized_rmse, 7), round(factorization_rmse, 7), 
           round(final_rmse, 7)) # second column
 final_results <- data.frame(Methods, RMSE)
-reactable(final_results,
+table <- reactable(final_results,
   highlight = TRUE,
   bordered = TRUE,
   theme = reactableTheme(
