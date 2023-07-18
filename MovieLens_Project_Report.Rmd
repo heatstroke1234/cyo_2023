@@ -10,8 +10,24 @@ output: pdf_document
 always_allow_html: true
 ---
 # Introduction
+The goal of this project was to make a movie recommendation software utilizing
+machine learning algorithms. Specifically, the movie recommendation software
+must have aspired to a certain level of quality and accuracy. This level was
+measured by the RMSE (Root Mean Square Error), where a lower RMSE would be 
+ideal. The RMSE goal set was 0.86490, so achieving less than this number would
+have been the target. This was accomplished by initially engaging in data
+exploration (i.e. visualizing the data and outputting its summary statistics),
+then moving on to actually training the data by first accounting for
+various biases in the rating of various movies, then using machine learning
+techniques to further decrease the RMSE and make the movie recommendation
+software optimal.
 
 ## Initial Setup
+This project utilized a dataset collected and provided by GroupLens, a research
+lab at the University of Minnesota specializing in recommender systems, among
+other things. As such, GroupLens has collected millions of movie reviews,
+offering these reviews in the form of datasets of various sizes. For this
+project, the 10M dataset was used, and was loaded as follows:
 
 ```{r}
 if(!require(tidyverse)) install.packages("tidyverse", 
@@ -76,6 +92,11 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 ```
 
 ## Dividing the Algorithm
+As can be observed, the 10M dataset was divided into two separate datasets, 
+those being edx and final_holdout_test. Then, the edx dataset was further split 
+into two datasets in order to properly build and test the machine learning 
+algorithm. However, the final test was conducted using the final_holdout_test
+dataset.
 
 ```{r}
 # Further division of edx into training and testing sets
