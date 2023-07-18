@@ -119,18 +119,26 @@ rm(test_index, temp, removed)
 ```
 
 # Data Exploration
+First, before engaging in any training of the data, I first had to take a 
+closer look at the dataset that was provided. To do this, I outputted some 
+summary statistics, and visualized the data so that I could better understand 
+the data contained within the dataset.
 
 ## Statistical Summary
 ```{r}
 # Statistical summary of the dataset edx
 summary(edx)
 ```
+The summary() function provided a statistical summary of the data contained 
+within the dataset, which helped me look at the data with a new perspective.
 
 ## Unique Users Versus Unique Movies
 ```{r}
 # Output number of users versus number of movies
 summarize(edx, num_users = n_distinct(userId), num_movies = n_distinct(movieId))
 ```
+As can be observed, there are 69878 unique users and 10677 unique movies within 
+the edx dataset.
 
 ## Top Movies Graph
 ```{r}
@@ -145,6 +153,7 @@ edx %>%
   labs(x = "Count", y = "Movies", caption = "Source: edx dataset") +
   ggtitle("Most Popular Movies")
 ```
+This graph is of the top 10 most popular movies within the dataset.
 
 ## Number of Ratings Per Rating Graph
 ```{r}
@@ -156,6 +165,8 @@ edx %>%
   scale_x_continuous(breaks = seq(0, 5, by = 0.5)) +
   ggtitle("Rating Count Per Rating")
 ```
+Within this graph, one can observe that no user has given 0 as a rating, and
+whole-star ratings are much more common than half-star ratings.
 
 ## Number of Ratings Versus Users Graph
 ```{r}
@@ -169,6 +180,9 @@ edx %>%
   ggtitle("Number of Ratings Versus Users") +
   scale_x_log10()
 ```
+Looking at this graph, one can observe that the graph is skewed to the right.
+This indicates that most users are not as active, but there are a few users 
+that are much more active than the others.
 
 ## Number of Ratings Versus Movies Graph
 ```{r}
@@ -182,8 +196,15 @@ edx %>%
   ggtitle("Number of Ratings Versus Movies") +
   scale_x_log10()
 ```
+Compared to the Rating Versus Users graph, this graph is much more normally
+distributed. Still, one can observe that some movies get rated much more often
+than others.
 
 # Data Analysis
+With the data exploration finished, it was time to start on the actual data
+analysis and training. During this time, I trained 7 models in total, each one 
+bringing the overall quality of the model closer to the ideal RMSE defined at
+the start of the project.
 
 ## RMSE and Mean
 
