@@ -246,7 +246,7 @@ movies.
 
 ### Adding Movie Bias
 As can be seen through experience, some types of movies are more popular than 
-others. Therefore, I have added this bias into the next model trained.
+others. Therefore, I added this bias into the next model trained.
 
 ```{r}
 # Add movie bias to calculation
@@ -264,9 +264,13 @@ movie_bias_rmse <- rmse(predicted_ratings, test_set$rating)
 movie_bias_rmse
 ```
 As can be observed, adding movie bias to the model decreased the RMSE below 1. 
-This can be built upon in future models.
+This was built upon in future models.
 
 ### Adding User Bias
+Next, the users (i.e. the people who rate the movies) are biased in their own 
+way, as certain users will rate movies a certain way. For instance, some users 
+may tend to be overly positive or overly negative in their ratings. Thus, I 
+took this into account with the next model.
 
 ```{r}
 # Add user bias to calculation
@@ -286,8 +290,17 @@ predicted_ratings <- test_set %>%
 user_bias_rmse <- rmse(predicted_ratings, test_set$rating)
 user_bias_rmse
 ```
+Adding user bias to this next model reduced the RMSE further. In fact, this 
+RMSE is below the target set at the beginning of the project, but it is not low 
+enough to be a significant change. Therefore, further models improved on this 
+number.
 
 ### Adding Time Bias
+Movies are also rated differently depending on the time they came out. Movies 
+may not generate as much hype if they come out during a non-peak time, so they 
+will be rated lower. Thus, I accounted for this with the next model by adding 
+time bias into the calculations.
+
 ```{r}
 # Add time bias to calculation
 bt <- train_set %>%
@@ -310,6 +323,9 @@ predicted_ratings <- test_set %>%
 time_bias_rmse <- rmse(predicted_ratings, test_set$rating)
 time_bias_rmse
 ```
+Adding time bias to the model made it perform better, but still not by a 
+significant amount. In fact, this improvement was the smallest one yet. 
+Therefore, to decrease the RMSE further, I had to employ a new strategy.
 
 ## Data Regularization
 
