@@ -207,6 +207,9 @@ bringing the overall quality of the model closer to the ideal RMSE defined at
 the start of the project.
 
 ## RMSE and Mean
+To start the data analysis, I made a function that would calculate the RMSE so
+that I would not have to calculate it manually every time I created a new 
+model.
 
 ```{r}
 # Function to calculate RMSE
@@ -214,22 +217,36 @@ rmse <- function(true_ratings, predicted_ratings) {
   sqrt(mean((true_ratings - predicted_ratings)^2))
 }
 ```
+This is the function mentioned above. It takes in the actual movie ratings and
+the movie ratings predicted by the model, and outputs the RMSE of the model.
 
 ```{r}
 # Mean of all ratings
 mean_rating <- mean(train_set$rating)
 mean_rating
 ```
+As a baseline, I calculated the mean of all the ratings in the training set. 
+This was then used to train the first model.
 
 ```{r}
 # RMSE calculated with just the mean
 mean_rmse <- rmse(test_set$rating, mean_rating)
 mean_rmse
 ```
+This first model was trained using simply the mean of the training set. 
+Because the RMSE is above 1, this is not a very good model, and needs to be 
+improved upon in later models.
 
 ## Adding Bias to Calculations
+Once I established a starting point for my future models to improve on, I 
+could implement various changes and fixes that would decrease the RMSE further 
+in order to bring myself closer to the goal set previously. Therefore, I 
+decided to account for the various biases that can exist in the ratings of 
+movies.
 
 ### Adding Movie Bias
+As can be seen through experience, some types of movies are more popular than 
+others. Therefore, I have added this bias into the next model trained.
 
 ```{r}
 # Add movie bias to calculation
@@ -246,6 +263,8 @@ predicted_ratings <- mean_rating + test_set %>%
 movie_bias_rmse <- rmse(predicted_ratings, test_set$rating)
 movie_bias_rmse
 ```
+As can be observed, adding movie bias to the model decreased the RMSE below 1. 
+This can be built upon in future models.
 
 ### Adding User Bias
 
