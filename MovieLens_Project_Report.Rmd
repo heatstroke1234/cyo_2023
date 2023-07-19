@@ -10,23 +10,23 @@ output: pdf_document
 always_allow_html: true
 ---
 # Introduction
-The goal of this project was to make a movie recommendation software utilizing
-machine learning algorithms. Specifically, the movie recommendation software
-must have aspired to a certain level of quality and accuracy. This level was
+The goal of this project was to make a movie recommendation software utilizing 
+machine learning algorithms. Specifically, the movie recommendation software 
+must have aspired to a certain level of quality and accuracy. This level was 
 measured by the RMSE (Root Mean Square Error), where a lower RMSE would be 
-ideal. The RMSE goal set was 0.86490, so achieving less than this number would
-have been the target. This was accomplished by initially engaging in data
-exploration (i.e. visualizing the data and outputting its summary statistics),
-then moving on to actually training the data by first accounting for
-various biases in the rating of various movies, then using machine learning
-techniques to further decrease the RMSE and make the movie recommendation
+ideal. The RMSE goal set was 0.86490, so achieving less than this number would 
+have been the target. This was accomplished by initially engaging in data 
+exploration (i.e. visualizing the data and outputting its summary statistics), 
+then moving on to actually training the data by first accounting for 
+various biases in the rating of various movies, then using machine learning 
+techniques to further decrease the RMSE and make the movie recommendation 
 software optimal.
 
 ## Initial Setup
-This project utilized a dataset collected and provided by GroupLens, a research
-lab at the University of Minnesota specializing in recommender systems, among
-other things. As such, GroupLens has collected millions of movie reviews,
-offering these reviews in the form of datasets of various sizes. For this
+This project utilized a dataset collected and provided by GroupLens, a research 
+lab at the University of Minnesota specializing in recommender systems, among 
+other things. As such, GroupLens has collected millions of movie reviews, 
+offering these reviews in the form of datasets of various sizes. For this 
 project, the 10M dataset was used, and was loaded as follows:
 
 ```{r}
@@ -92,10 +92,10 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 ```
 
 ## Dividing the Algorithm
-As can be observed, the 10M dataset was divided into two separate datasets, 
-those being edx and final_holdout_test. Then, the edx dataset was further split 
+As can be observed, the 10M dataset was divided into two separate datasets,  
+those being edx and final_holdout_test. Then, the edx dataset was further split  
 into two datasets in order to properly build and test the machine learning 
-algorithm. However, the final test was conducted using the final_holdout_test
+algorithm. However, the final test was conducted using the final_holdout_test 
 dataset.
 
 ```{r}
@@ -165,7 +165,7 @@ edx %>%
   scale_x_continuous(breaks = seq(0, 5, by = 0.5)) +
   ggtitle("Rating Count Per Rating")
 ```
-Within this graph, one can observe that no user has given 0 as a rating, and
+Within this graph, one can observe that no user has given 0 as a rating, and 
 whole-star ratings are much more common than half-star ratings.
 
 ## Number of Ratings Versus Users Graph
@@ -180,7 +180,7 @@ edx %>%
   ggtitle("Number of Ratings Versus Users") +
   scale_x_log10()
 ```
-Looking at this graph, one can observe that the graph is skewed to the right.
+Looking at this graph, one can observe that the graph is skewed to the right. 
 This indicates that most users are not as active, but there are a few users 
 that are much more active than the others.
 
@@ -196,18 +196,18 @@ edx %>%
   ggtitle("Number of Ratings Versus Movies") +
   scale_x_log10()
 ```
-Compared to the Rating Versus Users graph, this graph is much more normally
-distributed. Still, one can observe that some movies get rated much more often
+Compared to the Rating Versus Users graph, this graph is much more normally 
+distributed. Still, one can observe that some movies get rated much more often 
 than others.
 
 # Data Analysis
-With the data exploration finished, it was time to start on the actual data
+With the data exploration finished, it was time to start on the actual data 
 analysis and training. During this time, I trained 7 models in total, each one 
-bringing the overall quality of the model closer to the ideal RMSE defined at
+bringing the overall quality of the model closer to the ideal RMSE defined at 
 the start of the project.
 
 ## RMSE and Mean
-To start the data analysis, I made a function that would calculate the RMSE so
+To start the data analysis, I made a function that would calculate the RMSE so 
 that I would not have to calculate it manually every time I created a new 
 model.
 
@@ -217,7 +217,7 @@ rmse <- function(true_ratings, predicted_ratings) {
   sqrt(mean((true_ratings - predicted_ratings)^2))
 }
 ```
-This is the function mentioned above. It takes in the actual movie ratings and
+This is the function mentioned above. It takes in the actual movie ratings and 
 the movie ratings predicted by the model, and outputs the RMSE of the model.
 
 ```{r}
@@ -328,6 +328,13 @@ significant amount. In fact, this improvement was the smallest one yet.
 Therefore, to decrease the RMSE further, I had to employ a new strategy.
 
 ## Data Regularization
+Some of the data in any dataset can be "noisy", where large estimates come 
+from small sample sizes. In the case of this dataset, it can mean that there 
+are ratings of obscure movies by only a few users within the dataset. 
+Therefore, I used regularization to penalize these large estimates from 
+small sample sizes. In addition to this, I used cross-validation to find the 
+optimal penalty to use (denoted by lambda) and applied it to the next model 
+generated.
 
 ```{r}
 # Applying data regularization
@@ -369,14 +376,28 @@ qplot(lambdas, rmses, color = I("red"))
 lambda <- lambdas[which.min(rmses)]
 lambda
 ```
+After calculating and plotting a range of lambdas versus RMSEs, I found the 
+optimal lambda to use on the model. This optimal lambda provides the lowest 
+error (i.e. it is the lowest point on the graph).
 
 ```{r}
 # Selecting the lambda with the lowest RMSE
 regularized_rmse <- min(rmses)
 regularized_rmse
 ```
+While the RMSE did improve in a greater manner compared to the previous model, 
+it is still quite a small improvement compared to what came before. 
+Additionally, the RMSE is still a rounding error within the target RMSE. 
+To make the RMSE sufficiently low, I had to switch tactics once again.
 
 ## Matrix Factorization (using the recosystem package)
+To make the RMSE lower, I turned to matrix factorization, which is a process 
+by which the data is processed as a large and sparse matrix, then decomposed 
+into two smaller dimensional matrices with less sparsity and latent features. 
+This was accomplished by using the recosystem package. The data was 
+converted into the recosystem format, tuned to select the best tuning 
+parameters along a set of candidate values, trained, and finally tested by 
+computing the predicted values.
 
 ```{r}
 # Applying matrix factorization using the recosystem package
@@ -406,8 +427,14 @@ reco_first <- reco$predict(reco_test, out_memory())
 factorization_rmse <- RMSE(reco_first, test_set$rating)
 factorization_rmse
 ```
+This RMSE is the best one yet, and the improvement is significant enough that 
+it can be seen as sufficiently lower than the target RMSE. Therefore, this is 
+the process by which I conducted the final holdout test.
 
 ## Final Holdout Test
+Because I determined that this method would be the ideal method to conduct the 
+final holdout test with, I trained the model using the edx set and tested it 
+using the final_holdout_test set.
 
 ```{r}
 # Using matrix factorization on final holdout test
@@ -434,8 +461,12 @@ reco_final <- reco$predict(reco_final_holdout, out_memory())
 final_rmse <- RMSE(reco_final, final_holdout_test$rating)
 final_rmse
 ```
+This is the final RMSE, generated using the final_holdout_test dataset. No 
+more testing occured after this.
 
 # Final Results
+The final results of the data analysis can be seen in the table generated 
+below:
 
 ```{r}
 # Table made using the reactable package
@@ -474,5 +505,34 @@ saveWidget(widget = table, file = "table_html.html", selfcontained = TRUE)
 webshot(url = "table_html.html", file = "final_table.png", delay = 0.1, 
         vwidth = 1245)
 ```
+As can be observed, the final RMSE generated was significantly lower than the 
+target RMSE of 0.86490. I tested several models, but achieved the best results 
+using matrix factorization with the recosystem package. Therefore, matrix 
+factorization, at least concerning this model, was the best option which 
+provided an optimal movie recommendation system by the metrics tested by this 
+project, that being the RMSE.
 
 # Conclusion
+To conclude this project, I set out to make a movie recommendation software 
+using machine learning algorithms. This was accomplished by using data 
+exploration to better understand the data I was working with, and then 
+data analysis in order to eliminate various types of biases in movie rating, 
+regularize the data, and finally utilize matrix factorization in order to 
+make the best movie recommendation system that I could. Keeping in mind that 
+the RMSE goal set was 0.86490, I achieved an RMSE lower than this by a not 
+insignificant amount, which I find to be a success. 
+
+However, some limitations of the project include factoring in time bias. 
+This increased the runtime of the program by a significant amount, for not much 
+gain in return, in terms of how much the RMSE was lowered. In general, the 
+runtime of the code could be reduced in a number of places, but this was the 
+biggest detractor in that regard. In addition to this, to state the obvious, 
+this project is simply the first step in making software that can actually 
+predict the ratings of movies before they even come out.
+
+In the future, this project can be used as a shell or stepping stone for other 
+machine learning algorithms to predict other forms of ratings. For instance, it 
+can be used to predict the ratings of books or video games. However, it could 
+go even further than that, and be used for other predictions for any topic 
+imaginable. This can all be accomplished by using the methods employed in this 
+project as a base.
