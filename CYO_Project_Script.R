@@ -1,18 +1,11 @@
-################################################################
-# The following code is provided by the edx course and platform:
-################################################################
-
-##########################################################
-# Create edx and final_holdout_test sets 
-##########################################################
+# Create edx and final_holdout_test sets
 
 # Note: this process could take a couple of minutes
 
 if(!require(tidyverse)) install.packages("tidyverse", 
                                          repos = "http://cran.us.r-project.org")
 if(!require(caret)) install.packages("caret", 
-                                     repos = "http://cran.us.r-project.org")
-
+                                    repos = "http://cran.us.r-project.org")
 library(tidyverse)
 library(caret)
 
@@ -68,9 +61,6 @@ edx <- rbind(edx, removed)
 
 rm(dl, ratings, movies, test_index, temp, movielens, removed)
 
-################################################################
-# The following code is my actual project:
-################################################################
 # Further division of edx into training and testing sets
 set.seed(1, sample.kind = "Rounding") # using R 3.6 or later
 test_index <- createDataPartition(y = edx$rating, times = 1, 
