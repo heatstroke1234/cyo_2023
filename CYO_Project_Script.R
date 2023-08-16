@@ -9,122 +9,84 @@ if(!require(caret)) install.packages("caret",
 library(tidyverse)
 library(caret)
 
-# MovieLens 10M dataset:
-# https://grouplens.org/datasets/movielens/10m/
-# http://files.grouplens.org/datasets/movielens/ml-10m.zip
+# CYO car rating dataset:
+# https://huggingface.co/datasets/florentgbelidji/car-reviews/resolve/main/train_car.csv
 
 options(timeout = 120)
 
-dl <- "ml-10M100K.zip"
+dl <- "train_car.csv"
 if(!file.exists(dl))
-  download.file("https://files.grouplens.org/datasets/movielens/ml-10m.zip", dl)
+  download.file("https://huggingface.co/datasets/florentgbelidji/car-reviews/resolve/main/train_car.csv", dl)
 
-ratings_file <- "ml-10M100K/ratings.dat"
-if(!file.exists(ratings_file))
-  unzip(dl, ratings_file)
+dl_frame <- read.csv(dl)
+dl_frame <- subset(dl_frame, select = -c(X, Unnamed..0, Author_Name, Review_Title, Review))
+dl_frame <- dl_frame %>% 
+  separate(Vehicle_Title, c("Model_Year", "Make", "Model"), 
+           extra = "drop", fill = "right")
+dl_frame$Model_Year = as.numeric(as.character(dl_frame$Model_Year)) 
+dl_frame <- dl_frame[order(dl_frame$Model_Year),]
+dl_frame$Review_Date = substr(dl_frame$Review_Date, 11, 12)
+dl_frame$Review_Date = paste("20", dl_frame$Review_Date, sep = "")
+colnames(dl_frame)[1] ="Review_Year"
+dl_frame$Review_Year = as.numeric(as.character(dl_frame$Review_Year)) 
 
-movies_file <- "ml-10M100K/movies.dat"
-if(!file.exists(movies_file))
-  unzip(dl, movies_file)
-
-ratings <- as.data.frame(str_split(read_lines(ratings_file), fixed("::"), 
-                                   simplify = TRUE), stringsAsFactors = FALSE)
-colnames(ratings) <- c("userId", "movieId", "rating", "timestamp")
-ratings <- ratings %>%
-  mutate(userId = as.integer(userId),
-         movieId = as.integer(movieId),
-         rating = as.numeric(rating),
-         timestamp = as.integer(timestamp))
-
-movies <- as.data.frame(str_split(read_lines(movies_file), fixed("::"), 
-                                  simplify = TRUE), stringsAsFactors = FALSE)
-colnames(movies) <- c("movieId", "title", "genres")
-movies <- movies %>% mutate(movieId = as.integer(movieId))
-
-movielens <- left_join(ratings, movies, by = "movieId")
-
-# Final hold-out test set will be 10% of MovieLens data
+# Final hold-out test set will be 10% of the given data
 set.seed(1, sample.kind="Rounding") # using R 3.6 or later
-test_index <- createDataPartition(y = movielens$rating, times = 1, 
+test_index <- createDataPartition(y = dl_frame$Rating, times = 1, 
                                   p = 0.1, list = FALSE)
-edx <- movielens[-test_index,]
-temp <- movielens[test_index,]
-
-# Make sure userId and movieId in final hold-out test set are also in edx set
-final_holdout_test <- temp %>% 
-  semi_join(edx, by = "movieId") %>%
-  semi_join(edx, by = "userId")
-
-# Add rows removed from final hold-out test set back into edx set
-removed <- anti_join(temp, final_holdout_test)
-edx <- rbind(edx, removed)
-
-rm(dl, ratings, movies, test_index, temp, movielens, removed)
+edx <- dl_frame[-test_index,]
+final_holdout_test <- dl_frame[test_index,]
 
 # Further division of edx into training and testing sets
 set.seed(1, sample.kind = "Rounding") # using R 3.6 or later
-test_index <- createDataPartition(y = edx$rating, times = 1, 
+test_index <- createDataPartition(y = edx$Rating, times = 1, 
                                   p = 0.1, list = FALSE)
 train_set <- edx[-test_index,]
-temp <- edx[test_index,]
-
-# Matching userId and movieId in both train and test sets
-test_set <- temp %>%
-  semi_join(train_set, by = "movieId") %>%
-  semi_join(train_set, by = "userId")
-
-# Adding rows back into train set
-removed <- anti_join(temp, test_set)
-train_set <- rbind(train_set, removed)
-
-rm(test_index, temp, removed)
+test_set <- edx[test_index,]
 
 ### Starting data exploration
 
 # Statistical summary of the dataset edx
 summary(edx)
 
-# Output number of users versus number of movies
-summarize(edx, num_users = n_distinct(userId), num_movies = n_distinct(movieId))
-
-# Graph top movies
+# Graph top car models
 edx %>%
-  group_by(title) %>%
+  group_by(Model) %>%
   summarize(count = n()) %>%
   top_n(10, count) %>%
   arrange(-count) %>%
-  ggplot(aes(count, reorder(title, count))) +
+  ggplot(aes(count, reorder(Model, count))) +
   geom_bar(color = "gray", fill = "firebrick", stat = "identity") +
-  labs(x = "Count", y = "Movies", caption = "Source: edx dataset") +
-  ggtitle("Most Popular Movies")
+  labs(x = "Count", y = "Car Models", caption = "Source: given dataset") +
+  ggtitle("Most Popular Car Models")
   
 # Graph number of ratings per rating
 edx %>%
-  ggplot(aes(rating)) +
+  ggplot(aes(Rating)) +
   geom_bar(color = "gray", fill = "firebrick") +
-  labs(x = "Ratings", y = "Frequency", caption = "Source: edx dataset") +
-  scale_x_continuous(breaks = seq(0, 5, by = 0.5)) +
+  labs(x = "Ratings", y = "Frequency", caption = "Source: given dataset") +
+  scale_x_continuous(breaks = seq(0, 5, by = 1)) +
   ggtitle("Rating Count Per Rating")
 
-# Graph number of ratings versus users
-edx %>% 
-  group_by(userId) %>%
+# Graph top car models
+edx %>%
+  group_by(Model_Year) %>%
   summarize(count = n()) %>%
-  ggplot(aes(count)) +
-  geom_histogram(color = "gray", fill = "firebrick", bins = 50) +
-  labs(x = "Ratings", y = "Users", caption = "Source: edx dataset") +
-  ggtitle("Number of Ratings Versus Users") +
-  scale_x_log10()
+  top_n(10, count) %>%
+  arrange(-count) %>%
+  ggplot(aes(count, reorder(Model_Year, count))) +
+  geom_bar(color = "gray", fill = "firebrick", stat = "identity") +
+  labs(x = "Count", y = "Car Model Years", caption = "Source: given dataset") +
+  ggtitle("Top Car Model Year Ratings")
 
-# Graph number of ratings versus movies
+# Graph number of ratings versus car models
 edx %>% 
-  group_by(movieId) %>%
+  group_by(Model) %>%
   summarize(count = n()) %>%
   ggplot(aes(count)) +
   geom_histogram(color = "gray", fill = "firebrick", bins = 50) +
-  labs(x = "Ratings", y = "Movies", caption = "Source: edx dataset") +
-  ggtitle("Number of Ratings Versus Movies") +
-  scale_x_log10()
+  labs(x = "Ratings", y = "Car Models", caption = "Source: given dataset") +
+  ggtitle("Number of Ratings Versus Car Models")
 
 ### Starting data analysis
 
@@ -134,39 +96,39 @@ rmse <- function(true_ratings, predicted_ratings) {
 }
 
 # Mean of all ratings
-mean_rating <- mean(train_set$rating)
+mean_rating <- mean(train_set$Rating)
 mean_rating
 
 # RMSE calculated with just the mean
-mean_rmse <- rmse(test_set$rating, mean_rating)
+mean_rmse <- rmse(test_set$Rating, mean_rating)
 mean_rmse
 
-# Add movie bias to calculation
+# Add car model bias to calculation
 bi <- train_set %>%
-  group_by(movieId) %>%
-  summarize(b_i = mean(rating - mean_rating))
+  group_by(Model) %>%
+  summarize(b_i = mean(Rating - mean_rating))
 predicted_ratings <- mean_rating + test_set %>%
-  left_join(bi, by = "movieId") %>%
+  left_join(bi, by = "Model") %>%
   pull(b_i)
 
-# RMSE calculated with mean and movie bias
-movie_bias_rmse <- rmse(predicted_ratings, test_set$rating)
-movie_bias_rmse
+# RMSE calculated with mean and car model bias
+car_model_bias_rmse <- rmse(predicted_ratings, test_set$Rating)
+car_model_bias_rmse
 
-# Add user bias to calculation
+# Add car make bias to calculation
 bu <- train_set %>%
-  left_join(bi, by = "movieId") %>%
-  group_by(userId) %>%
-  summarize(b_u = mean(rating - mean_rating - b_i))
+  left_join(bi, by = "Model") %>%
+  group_by(Make) %>%
+  summarize(b_u = mean(Rating - mean_rating - b_i))
 predicted_ratings <- test_set %>%
-  left_join(bi, by = "movieId") %>%
-  left_join(bu, by = "userId") %>%
+  left_join(bi, by = "Model") %>%
+  left_join(bu, by = "Make") %>%
   mutate(pred = mean_rating + b_i + b_u) %>%
   pull(pred)
 
-# RMSE calculated with mean, movie, and user bias
-user_bias_rmse <- rmse(predicted_ratings, test_set$rating)
-user_bias_rmse
+# RMSE calculated with mean, car model, and car make bias
+car_make_bias_rmse <- rmse(predicted_ratings, test_set$Rating)
+car_make_bias_rmse
 
 # Add time bias to calculation
 bt <- train_set %>%
@@ -285,14 +247,14 @@ library(webshot2)
 if(!require(htmlwidgets)) install.packages("htmlwidgets", 
                                         repos = "http://cran.us.r-project.org")
 library(htmlwidgets)
-Methods <- c("Just the mean", "Mean and movie bias", 
-             "Mean, movie, and user bias", "Mean, movie, user, and time bias", 
+Methods <- c("Just the mean", "Mean and car model bias", 
+             "Mean, car model, and car make bias", "Mean, car model, car make, and time bias", 
              "Regularized movie, user, and time effects",
              "Matrix factorization using recosystem", 
              "Final holdout test 
              (generated using matrix factorization)") # first column
-RMSE <- c(round(mean_rmse, 7), round(movie_bias_rmse, 7), 
-          round(user_bias_rmse, 7), round(time_bias_rmse, 7), 
+RMSE <- c(round(mean_rmse, 7), round(car_model_bias_rmse, 7), 
+          round(car_make_bias_rmse, 7), round(time_bias_rmse, 7), 
           round(regularized_rmse, 7), round(factorization_rmse, 7), 
           round(final_rmse, 7)) # second column
 final_results <- data.frame(Methods, RMSE)
