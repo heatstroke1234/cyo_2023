@@ -14,12 +14,16 @@ library(caret)
 
 options(timeout = 120)
 
+# Retrieve dataset
 dl <- "train_car.csv"
 if(!file.exists(dl))
-  download.file("https://huggingface.co/datasets/florentgbelidji/car-reviews/resolve/main/train_car.csv", dl)
+  download.file(
+    "https://huggingface.co/datasets/florentgbelidji/car-reviews/resolve/main/train_car.csv", dl)
 
+# Clean and further modify dataset
 dl_frame <- read.csv(dl)
-dl_frame <- subset(dl_frame, select = -c(X, Unnamed..0, Author_Name, Review_Title, Review))
+dl_frame <- subset(dl_frame, select = -c(X, Unnamed..0, Author_Name, 
+                                         Review_Title, Review))
 dl_frame <- dl_frame %>% 
   separate(Vehicle_Title, c("Model_Year", "Make", "Model"), 
            extra = "drop", fill = "right")
@@ -151,28 +155,26 @@ review_year_bias_rmse
 lambdas <- seq(0, 10, 0.25)
 rmses <- sapply(lambdas, function(x){
   b_i <- train_set %>%
-    group_by(movieId) %>%
-    summarize(b_i = sum(rating - mean_rating)/(n() + x)) # adding movie bias
+    group_by(Model) %>%
+    summarize(b_i = sum(Rating - mean_rating)/(n() + x)) # adding car model bias
   b_u <- train_set %>%
-    left_join(b_i, by = "movieId") %>%
-    group_by(userId) %>%
-    summarize(b_u = sum(rating - b_i - 
-                          mean_rating)/(n() + x)) # adding user bias
+    left_join(b_i, by = "Model") %>%
+    group_by(Make) %>%
+    summarize(b_u = sum(Rating - b_i - 
+                          mean_rating)/(n() + x)) # adding car make bias
   b_t <- train_set %>%
-    mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
-    left_join(b_i, by = "movieId") %>%
-    left_join(b_u, by = "userId") %>%
-    group_by(date) %>%
-    summarize(b_t = mean(rating - b_i - b_u - 
-                           mean_rating)/(n() + x)) # adding time bias
+    left_join(b_i, by = "Model") %>%
+    left_join(b_u, by = "Make") %>%
+    group_by(Review_Year) %>%
+    summarize(b_t = mean(Rating - b_i - b_u - 
+                           mean_rating)/(n() + x)) # adding review year bias
   predicted_ratings <- test_set %>%
-    mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
-    left_join(b_i, by = "movieId") %>%
-    left_join(b_u, by = "userId") %>%
-    left_join(b_t, by = "date") %>%
+    left_join(b_i, by = "Model") %>%
+    left_join(b_u, by = "Make") %>%
+    left_join(b_t, by = "Review_Year") %>%
     mutate(pred = mean_rating + b_i + b_u + b_t) %>%
     pull(pred)
-  return(rmse(predicted_ratings, test_set$rating))
+  return(rmse(predicted_ratings, test_set$Rating))
 })
 
 # Plotting lambdas versus RMSEs
@@ -191,11 +193,12 @@ if(!require(recosystem)) install.packages(
   "recosystem", repos = "http://cran.us.r-project.org")
 library(recosystem)
 set.seed(1, sample.kind = "Rounding") # using R 3.6 or later
-reco_train <- with(train_set, data_memory(user_index = userId, 
-                                          item_index = movieId, 
-                                          rating = rating))
-reco_test <- with(test_set, data_memory(user_index = userId, 
-                                        item_index = movieId, rating = rating))
+reco_train <- with(train_set, data_memory(user_index = Review_Year, 
+                                          item_index = Model_Year, 
+                                          rating = Rating))
+reco_test <- with(test_set, data_memory(user_index = Review_Year, 
+                                        item_index = Model_Year, 
+                                        rating = Rating))
 reco <- Reco()
 
 reco_para <- reco$tune(reco_train, opts = list(dim = c(20, 30), 
@@ -208,16 +211,19 @@ reco$train(reco_train, opts = c(reco_para$min, nthread = 4, niter = 30))
 reco_first <- reco$predict(reco_test, out_memory())
 
 # RMSE calculated with matrix factorization
-factorization_rmse <- RMSE(reco_first, test_set$rating)
+factorization_rmse <- RMSE(reco_first, test_set$Rating)
 factorization_rmse
 
 # Using matrix factorization on final holdout test
 set.seed(1, sample.kind = "Rounding") # using R 3.6 or later
-reco_edx <- with(edx, data_memory(user_index = userId, item_index = movieId, 
-                                  rating = rating))
-reco_final_holdout <- with(final_holdout_test, data_memory(user_index = userId, 
-                                                           item_index = movieId, 
-                                                           rating = rating))
+reco_edx <- with(edx, data_memory(user_index = Review_Year, 
+                                  item_index = Model_Year, 
+                                  rating = Rating))
+reco_final_holdout <- with(final_holdout_test, data_memory(user_index = 
+                                                             Review_Year, 
+                                                           item_index = 
+                                                             Model_Year, 
+                                                           rating = Rating))
 reco <- Reco()
 
 reco_para <- reco$tune(reco_edx, opts = list(dim = c(20, 30), 
@@ -230,7 +236,7 @@ reco$train(reco_edx, opts = c(reco_para$min, nthread = 4, niter = 30))
 reco_final <- reco$predict(reco_final_holdout, out_memory())
 
 # Generating final RMSE
-final_rmse <- RMSE(reco_final, final_holdout_test$rating)
+final_rmse <- RMSE(reco_final, final_holdout_test$Rating)
 final_rmse
 
 ### Final results
@@ -247,8 +253,8 @@ if(!require(htmlwidgets)) install.packages("htmlwidgets",
 library(htmlwidgets)
 Methods <- c("Just the mean", "Mean and car model bias", 
              "Mean, car model, and car make bias", "Mean, car model, 
-             car make, and model year bias", 
-             "Regularized movie, user, and time effects",
+             car make, and review year bias", 
+             "Regularized car model, car make, and review year effects",
              "Matrix factorization using recosystem", 
              "Final holdout test 
              (generated using matrix factorization)") # first column
