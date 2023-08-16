@@ -72,7 +72,7 @@ edx %>%
   scale_x_continuous(breaks = seq(0, 5, by = 1)) +
   ggtitle("Rating Count Per Rating")
 
-# Graph top car models
+# Graph top car model years
 edx %>%
   group_by(Model_Year) %>%
   summarize(count = n()) %>%
@@ -82,6 +82,17 @@ edx %>%
   geom_bar(color = "gray", fill = "firebrick", stat = "identity") +
   labs(x = "Count", y = "Car Model Years", caption = "Source: given dataset") +
   ggtitle("Top Car Model Year Ratings")
+
+# Graph top car review years
+edx %>%
+  group_by(Review_Year) %>%
+  summarize(count = n()) %>%
+  top_n(10, count) %>%
+  arrange(-count) %>%
+  ggplot(aes(count, reorder(Review_Year, count))) +
+  geom_bar(color = "gray", fill = "firebrick", stat = "identity") +
+  labs(x = "Count", y = "Car Review Years", caption = "Source: given dataset") +
+  ggtitle("Top Car Review Year Ratings")
 
 # Graph number of ratings versus car models
 edx %>% 
