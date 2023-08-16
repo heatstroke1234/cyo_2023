@@ -130,24 +130,22 @@ predicted_ratings <- test_set %>%
 car_make_bias_rmse <- rmse(predicted_ratings, test_set$Rating)
 car_make_bias_rmse
 
-# Add time bias to calculation
+# Add review year bias to calculation
 bt <- train_set %>%
-  mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
-  left_join(bi, by = "movieId") %>%
-  left_join(bu, by = "userId") %>%
-  group_by(date) %>%
-  summarize(b_t = mean(rating - mean_rating - b_i - b_u))
+  left_join(bi, by = "Model") %>%
+  left_join(bu, by = "Make") %>%
+  group_by(Review_Year) %>%
+  summarize(b_t = mean(Rating - mean_rating - b_i - b_u))
 predicted_ratings <- test_set %>%
-  mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
-  left_join(bi, by = "movieId") %>%
-  left_join(bu, by = "userId") %>%
-  left_join(bt, by = "date") %>%
+  left_join(bi, by = "Model") %>%
+  left_join(bu, by = "Make") %>%
+  left_join(bt, by = "Review_Year") %>%
   mutate(pred = mean_rating + b_i + b_u + b_t) %>%
   pull(pred)
 
-# RMSE calculated with mean, movie, user, and time bias
-time_bias_rmse <- rmse(predicted_ratings, test_set$rating)
-time_bias_rmse
+# RMSE calculated with mean, car model, car make, and review year bias
+review_year_bias_rmse <- rmse(predicted_ratings, test_set$Rating)
+review_year_bias_rmse
 
 # Applying data regularization
 lambdas <- seq(0, 10, 0.25)
@@ -248,13 +246,14 @@ if(!require(htmlwidgets)) install.packages("htmlwidgets",
                                         repos = "http://cran.us.r-project.org")
 library(htmlwidgets)
 Methods <- c("Just the mean", "Mean and car model bias", 
-             "Mean, car model, and car make bias", "Mean, car model, car make, and time bias", 
+             "Mean, car model, and car make bias", "Mean, car model, 
+             car make, and model year bias", 
              "Regularized movie, user, and time effects",
              "Matrix factorization using recosystem", 
              "Final holdout test 
              (generated using matrix factorization)") # first column
 RMSE <- c(round(mean_rmse, 7), round(car_model_bias_rmse, 7), 
-          round(car_make_bias_rmse, 7), round(time_bias_rmse, 7), 
+          round(car_make_bias_rmse, 7), round(review_year_bias_rmse, 7), 
           round(regularized_rmse, 7), round(factorization_rmse, 7), 
           round(final_rmse, 7)) # second column
 final_results <- data.frame(Methods, RMSE)
