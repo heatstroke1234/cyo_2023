@@ -26,10 +26,10 @@ RMSE and make the car rating prediction software optimal.
 This project utilized a dataset made publicly available on a site called 
 Hugging Face and provided by a user named Florent Gbelidji (user id 
 florentgbelidji). This dataset contained around 37 thousand different and 
-unique reviews for various car makes and models, along with information about 
-each specific review. In truth, for the purposes of this particular project, I 
-didn't need all of the information provided, so I preserved what I needed, and 
-cut what I didn't, as can be observed below:
+unique user reviews for various car makes and models, along with information 
+about each specific review. In truth, for the purposes of this particular 
+project, I didn't need all of the information provided, so I preserved what I 
+needed, and cut what I didn't, as can be observed below:
 
 ```{r}
 # Create edx and final_holdout_test sets
@@ -78,7 +78,7 @@ final_holdout_test <- dl_frame[test_index,]
 
 ## Dividing the Algorithm
 As can be observed, the Hugging Face Car Reviews dataset was divided into 
-two separate datasets,  those being edx and final_holdout_test. Then, the edx 
+two separate datasets, those being edx and final_holdout_test. Then, the edx 
 dataset was further split into two datasets in order to properly build and test 
 the machine learning algorithm. However, the final test was conducted using the 
 final_holdout_test dataset.
@@ -177,7 +177,8 @@ edx %>%
   ggtitle("Number of Ratings Versus Car Models")
 ```
 One can observe that this graph is very right-skewed. This shows the fact that 
-some car models get rated much more often than others.
+some car models get rated much more often than others, though most car models 
+are not rated very much.
 
 # Data Analysis
 With the data exploration finished, it was time to start on the actual data 
@@ -511,8 +512,15 @@ software that can actually predict the ratings of cars before they even
 come out.
 
 In the future, this project can be used as a shell or stepping stone for other 
-machine learning algorithms to predict other forms of ratings. For instance, it 
-can be used to predict the ratings of books or video games. However, it could 
-go even further than that, and be used for other predictions for any topic 
-imaginable. This can all be accomplished by using the methods employed in this 
-project as a base.
+machine learning algorithms to predict other forms of ratings. However, it 
+could go even further than that, and be used for other predictions for any 
+topic imaginable. This can all be accomplished by using the methods employed in 
+this project as a base. The sky's the limit when it comes to machine learning 
+algorithms such as these.
+
+# References
+The site from which I procured the dataset can be found here:
+https://huggingface.co/datasets/florentgbelidji/car-reviews/viewer/florentgbelidji--car-reviews/train?p=0
+
+The actual raw dataset can be found here:
+https://huggingface.co/datasets/florentgbelidji/car-reviews/resolve/main/train_car.csv
