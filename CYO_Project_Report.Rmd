@@ -11,7 +11,7 @@ always_allow_html: true
 ---
 # Introduction
 The goal of this project was to make a car rating prediction software utilizing 
-machine learning algorithms. Specifically, the car rating prediction software  
+machine learning algorithms. Specifically, the car rating prediction software 
 must have aspired to a certain level of quality and accuracy. The RMSE (that 
 being the Root Mean Squared Error) was used to determine both quality and 
 accuracy measured in this project, though a specific number was not aspired to, 
@@ -458,14 +458,15 @@ library(webshot2)
 if(!require(htmlwidgets)) install.packages("htmlwidgets", 
                                         repos = "http://cran.us.r-project.org")
 library(htmlwidgets)
-Methods <- c("Just the mean", "Mean and movie bias", 
-             "Mean, movie, and user bias", "Mean, movie, user, and time bias", 
-             "Regularized movie, user, and time effects",
+Methods <- c("Just the mean", "Mean and car model bias", 
+             "Mean, car model, and car make bias", "Mean, car model, 
+             car make, and review year bias", 
+             "Regularized car model, car make, and review year effects",
              "Matrix factorization using recosystem", 
              "Final holdout test 
              (generated using matrix factorization)") # first column
-RMSE <- c(round(mean_rmse, 7), round(movie_bias_rmse, 7), 
-          round(user_bias_rmse, 7), round(time_bias_rmse, 7), 
+RMSE <- c(round(mean_rmse, 7), round(car_model_bias_rmse, 7), 
+          round(car_make_bias_rmse, 7), round(review_year_bias_rmse, 7), 
           round(regularized_rmse, 7), round(factorization_rmse, 7), 
           round(final_rmse, 7)) # second column
 final_results <- data.frame(Methods, RMSE)
