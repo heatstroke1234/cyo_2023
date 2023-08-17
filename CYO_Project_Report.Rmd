@@ -10,112 +10,86 @@ output: pdf_document
 always_allow_html: true
 ---
 # Introduction
-The goal of this project was to make a movie recommendation software utilizing 
-machine learning algorithms. Specifically, the movie recommendation software 
-must have aspired to a certain level of quality and accuracy. This level was 
-measured by the RMSE (Root Mean Square Error), where a lower RMSE would be 
-ideal. The RMSE goal set was 0.86490, so achieving less than this number would 
-have been the target. This was accomplished by initially engaging in data 
-exploration (i.e. visualizing the data and outputting its summary statistics), 
-then moving on to actually training the data by first accounting for 
-various biases in the rating of various movies, then using machine learning 
-techniques to further decrease the RMSE and make the movie recommendation 
-software optimal.
+The goal of this project was to make a car rating prediction software utilizing 
+machine learning algorithms. Specifically, the car rating prediction software  
+must have aspired to a certain level of quality and accuracy. The RMSE (that 
+being the Root Mean Squared Error) was used to determine both quality and 
+accuracy measured in this project, though a specific number was not aspired to, 
+just the fact that the number had to be as low as possible. This was 
+accomplished by initially engaging in data exploration (i.e. visualizing the 
+data and outputting its summary statistics), then moving on to actually 
+training the data by first accounting for various biases in the rating of 
+various cars, then using machine learning techniques to further decrease the 
+RMSE and make the car rating prediction software optimal.
 
 ## Initial Setup
-This project utilized a dataset collected and provided by GroupLens, a research 
-lab at the University of Minnesota specializing in recommender systems, among 
-other things. As such, GroupLens has collected millions of movie reviews, 
-offering these reviews in the form of datasets of various sizes. For this 
-project, the 10M dataset was used, and was loaded as follows:
+This project utilized a dataset made publicly available on a site called 
+Hugging Face and provided by a user named Florent Gbelidji (user id 
+florentgbelidji). This dataset contained around 37 thousand different and 
+unique reviews for various car makes and models, along with information about 
+each specific review. In truth, for the purposes of this particular project, I 
+didn't need all of the information provided, so I preserved what I needed, and 
+cut what I didn't, as can be observed below:
 
 ```{r}
+# Create edx and final_holdout_test sets
+
+# Note: this process could take a couple of minutes
+
 if(!require(tidyverse)) install.packages("tidyverse", 
                                          repos = "http://cran.us.r-project.org")
 if(!require(caret)) install.packages("caret", 
-                                     repos = "http://cran.us.r-project.org")
-
+                                    repos = "http://cran.us.r-project.org")
 library(tidyverse)
 library(caret)
 
-# MovieLens 10M dataset:
-# https://grouplens.org/datasets/movielens/10m/
-# http://files.grouplens.org/datasets/movielens/ml-10m.zip
+# CYO car rating dataset:
+# https://huggingface.co/datasets/florentgbelidji/car-reviews/resolve/main/train_car.csv
 
 options(timeout = 120)
 
-dl <- "ml-10M100K.zip"
+# Retrieve dataset
+dl <- "train_car.csv"
 if(!file.exists(dl))
-  download.file("https://files.grouplens.org/datasets/movielens/ml-10m.zip", dl)
+  download.file(
+    "https://huggingface.co/datasets/florentgbelidji/car-reviews/resolve/main/train_car.csv", dl)
 
-ratings_file <- "ml-10M100K/ratings.dat"
-if(!file.exists(ratings_file))
-  unzip(dl, ratings_file)
+# Clean and further modify dataset
+dl_frame <- read.csv(dl)
+dl_frame <- subset(dl_frame, select = -c(X, Unnamed..0, Author_Name, 
+                                         Review_Title, Review))
+dl_frame <- dl_frame %>% 
+  separate(Vehicle_Title, c("Model_Year", "Make", "Model"), 
+           extra = "drop", fill = "right")
+dl_frame$Model_Year = as.numeric(as.character(dl_frame$Model_Year)) 
+dl_frame <- dl_frame[order(dl_frame$Model_Year),]
+dl_frame$Review_Date = substr(dl_frame$Review_Date, 11, 12)
+dl_frame$Review_Date = paste("20", dl_frame$Review_Date, sep = "")
+colnames(dl_frame)[1] ="Review_Year"
+dl_frame$Review_Year = as.numeric(as.character(dl_frame$Review_Year)) 
 
-movies_file <- "ml-10M100K/movies.dat"
-if(!file.exists(movies_file))
-  unzip(dl, movies_file)
-
-ratings <- as.data.frame(str_split(read_lines(ratings_file), fixed("::"), 
-                                   simplify = TRUE), stringsAsFactors = FALSE)
-colnames(ratings) <- c("userId", "movieId", "rating", "timestamp")
-ratings <- ratings %>%
-  mutate(userId = as.integer(userId),
-         movieId = as.integer(movieId),
-         rating = as.numeric(rating),
-         timestamp = as.integer(timestamp))
-
-movies <- as.data.frame(str_split(read_lines(movies_file), fixed("::"), 
-                                  simplify = TRUE), stringsAsFactors = FALSE)
-colnames(movies) <- c("movieId", "title", "genres")
-movies <- movies %>% mutate(movieId = as.integer(movieId))
-
-movielens <- left_join(ratings, movies, by = "movieId")
-
-# Final hold-out test set will be 10% of MovieLens data
+# Final hold-out test set will be 10% of the given data
 set.seed(1, sample.kind="Rounding") # using R 3.6 or later
-test_index <- createDataPartition(y = movielens$rating, times = 1, 
+test_index <- createDataPartition(y = dl_frame$Rating, times = 1, 
                                   p = 0.1, list = FALSE)
-edx <- movielens[-test_index,]
-temp <- movielens[test_index,]
-
-# Make sure userId and movieId in final hold-out test set are also in edx set
-final_holdout_test <- temp %>% 
-  semi_join(edx, by = "movieId") %>%
-  semi_join(edx, by = "userId")
-
-# Add rows removed from final hold-out test set back into edx set
-removed <- anti_join(temp, final_holdout_test)
-edx <- rbind(edx, removed)
-
-rm(dl, ratings, movies, test_index, temp, movielens, removed)
+edx <- dl_frame[-test_index,]
+final_holdout_test <- dl_frame[test_index,]
 ```
 
 ## Dividing the Algorithm
-As can be observed, the 10M dataset was divided into two separate datasets,  
-those being edx and final_holdout_test. Then, the edx dataset was further split  
-into two datasets in order to properly build and test the machine learning 
-algorithm. However, the final test was conducted using the final_holdout_test 
-dataset.
+As can be observed, the Hugging Face Car Reviews dataset was divided into 
+two separate datasets,  those being edx and final_holdout_test. Then, the edx 
+dataset was further split into two datasets in order to properly build and test 
+the machine learning algorithm. However, the final test was conducted using the 
+final_holdout_test dataset.
 
 ```{r}
 # Further division of edx into training and testing sets
 set.seed(1, sample.kind = "Rounding") # using R 3.6 or later
-test_index <- createDataPartition(y = edx$rating, times = 1, 
+test_index <- createDataPartition(y = edx$Rating, times = 1, 
                                   p = 0.1, list = FALSE)
 train_set <- edx[-test_index,]
-temp <- edx[test_index,]
-
-# Matching userId and movieId in both train and test sets
-test_set <- temp %>%
-  semi_join(train_set, by = "movieId") %>%
-  semi_join(train_set, by = "userId")
-
-# Adding rows back into train set
-removed <- anti_join(temp, test_set)
-train_set <- rbind(train_set, removed)
-
-rm(test_index, temp, removed)
+test_set <- edx[test_index,]
 ```
 
 # Data Exploration
@@ -132,79 +106,84 @@ summary(edx)
 The summary() function provided a statistical summary of the data contained 
 within the dataset, which helped me look at the data with a new perspective.
 
-## Unique Users Versus Unique Movies
+## Top Car Models Graph
 ```{r}
-# Output number of users versus number of movies
-summarize(edx, num_users = n_distinct(userId), num_movies = n_distinct(movieId))
-```
-As can be observed, there are 69878 unique users and 10677 unique movies within 
-the edx dataset.
-
-## Top Movies Graph
-```{r}
-# Graph top movies
+# Graph top car models
 edx %>%
-  group_by(title) %>%
+  group_by(Model) %>%
   summarize(count = n()) %>%
   top_n(10, count) %>%
   arrange(-count) %>%
-  ggplot(aes(count, reorder(title, count))) +
+  ggplot(aes(count, reorder(Model, count))) +
   geom_bar(color = "gray", fill = "firebrick", stat = "identity") +
-  labs(x = "Count", y = "Movies", caption = "Source: edx dataset") +
-  ggtitle("Most Popular Movies")
+  labs(x = "Count", y = "Car Models", caption = "Source: given dataset") +
+  ggtitle("Most Popular Car Models")
 ```
-This graph is of the top 10 most popular movies within the dataset.
+This graph is of the top 10 most car models within the dataset.
 
 ## Number of Ratings Per Rating Graph
 ```{r}
 # Graph number of ratings per rating
 edx %>%
-  ggplot(aes(rating)) +
+  ggplot(aes(Rating)) +
   geom_bar(color = "gray", fill = "firebrick") +
-  labs(x = "Ratings", y = "Frequency", caption = "Source: edx dataset") +
-  scale_x_continuous(breaks = seq(0, 5, by = 0.5)) +
+  labs(x = "Ratings", y = "Frequency", caption = "Source: given dataset") +
+  scale_x_continuous(breaks = seq(0, 5, by = 1)) +
   ggtitle("Rating Count Per Rating")
 ```
-Within this graph, one can observe that no user has given 0 as a rating, and 
-whole-star ratings are much more common than half-star ratings.
+Within this graph, one can observe that users give ratings in whole-number 
+increments, and that this particular graph is left-skewed, with much more users
+giving higher ratings than lower ratings.
 
-## Number of Ratings Versus Users Graph
+## Top Car Model Years Versus Top Car Review Years Graphed
 ```{r}
-# Graph number of ratings versus users
+# Graph top car model years
+edx %>%
+  group_by(Model_Year) %>%
+  summarize(count = n()) %>%
+  top_n(10, count) %>%
+  arrange(-count) %>%
+  ggplot(aes(count, reorder(Model_Year, count))) +
+  geom_bar(color = "gray", fill = "firebrick", stat = "identity") +
+  labs(x = "Count", y = "Car Model Years", caption = "Source: given dataset") +
+  ggtitle("Top Car Model Year Ratings")
+
+# Graph top car review years
+edx %>%
+  group_by(Review_Year) %>%
+  summarize(count = n()) %>%
+  top_n(10, count) %>%
+  arrange(-count) %>%
+  ggplot(aes(count, reorder(Review_Year, count))) +
+  geom_bar(color = "gray", fill = "firebrick", stat = "identity") +
+  labs(x = "Count", y = "Car Review Years", caption = "Source: given dataset") +
+  ggtitle("Top Car Review Year Ratings")
+```
+There are slight variations that can be observed between these two graphs, such 
+as different years placed in different rankings throughout. This can be 
+attributed to the fact that the reviews for the cars are often newer than the 
+cars themselves, which results in newer review years as opposed to older model 
+years.
+
+## Number of Ratings Versus Car Models Graph
+```{r}
+# Graph number of ratings versus car models
 edx %>% 
-  group_by(userId) %>%
+  group_by(Model) %>%
   summarize(count = n()) %>%
   ggplot(aes(count)) +
   geom_histogram(color = "gray", fill = "firebrick", bins = 50) +
-  labs(x = "Ratings", y = "Users", caption = "Source: edx dataset") +
-  ggtitle("Number of Ratings Versus Users") +
-  scale_x_log10()
+  labs(x = "Ratings", y = "Car Models", caption = "Source: given dataset") +
+  ggtitle("Number of Ratings Versus Car Models")
 ```
-Looking at this graph, one can observe that the graph is skewed to the right. 
-This indicates that most users are not as active, but there are a few users 
-that are much more active than the others.
-
-## Number of Ratings Versus Movies Graph
-```{r}
-# Graph number of ratings versus movies
-edx %>% 
-  group_by(movieId) %>%
-  summarize(count = n()) %>%
-  ggplot(aes(count)) +
-  geom_histogram(color = "gray", fill = "firebrick", bins = 50) +
-  labs(x = "Ratings", y = "Movies", caption = "Source: edx dataset") +
-  ggtitle("Number of Ratings Versus Movies") +
-  scale_x_log10()
-```
-Compared to the Rating Versus Users graph, this graph is much more normally 
-distributed. Still, one can observe that some movies get rated much more often 
-than others.
+One can observe that this graph is very right-skewed. This shows the fact that 
+some car models get rated much more often than others.
 
 # Data Analysis
 With the data exploration finished, it was time to start on the actual data 
 analysis and training. During this time, I trained 7 models in total, each one 
-bringing the overall quality of the model closer to the ideal RMSE defined at 
-the start of the project.
+varying in quality and accuracy, with some being closer to an ideal "lowest" 
+RMSE than others.
 
 ## RMSE and Mean
 To start the data analysis, I made a function that would calculate the RMSE so 
@@ -217,12 +196,12 @@ rmse <- function(true_ratings, predicted_ratings) {
   sqrt(mean((true_ratings - predicted_ratings)^2))
 }
 ```
-This is the function mentioned above. It takes in the actual movie ratings and 
-the movie ratings predicted by the model, and outputs the RMSE of the model.
+This is the function mentioned above. It takes in the actual car ratings and 
+the car ratings predicted by the model, and outputs the RMSE of the model.
 
 ```{r}
 # Mean of all ratings
-mean_rating <- mean(train_set$rating)
+mean_rating <- mean(train_set$Rating)
 mean_rating
 ```
 As a baseline, I calculated the mean of all the ratings in the training set. 
@@ -230,107 +209,103 @@ This was then used to train the first model.
 
 ```{r}
 # RMSE calculated with just the mean
-mean_rmse <- rmse(test_set$rating, mean_rating)
+mean_rmse <- rmse(test_set$Rating, mean_rating)
 mean_rmse
 ```
 This first model was trained using simply the mean of the training set. 
-Because the RMSE is above 1, this is not a very good model, and needs to be 
-improved upon in later models.
+Despite the fact that the RMSE is below 1, this is not a very good model, 
+and needs to be improved upon in later models.
 
 ## Adding Bias to Calculations
 Once I established a starting point for my future models to improve on, I 
 could implement various changes and fixes that would decrease the RMSE further 
 in order to bring myself closer to the goal set previously. Therefore, I 
 decided to account for the various biases that can exist in the ratings of 
-movies.
+cars.
 
-### Adding Movie Bias
-As can be seen through experience, some types of movies are more popular than 
-others. Therefore, I added this bias into the next model trained.
+### Adding Car Model Bias
+As can be seen through experience, some types of car models are more popular 
+than others. Therefore, I added this bias into the next model trained.
 
 ```{r}
-# Add movie bias to calculation
+# Add car model bias to calculation
 bi <- train_set %>%
-  group_by(movieId) %>%
-  summarize(b_i = mean(rating - mean_rating))
+  group_by(Model) %>%
+  summarize(b_i = mean(Rating - mean_rating))
 predicted_ratings <- mean_rating + test_set %>%
-  left_join(bi, by = "movieId") %>%
+  left_join(bi, by = "Model") %>%
   pull(b_i)
 ```
 
 ```{r}
-# RMSE calculated with mean and movie bias
-movie_bias_rmse <- rmse(predicted_ratings, test_set$rating)
-movie_bias_rmse
+# RMSE calculated with mean and car model bias
+car_model_bias_rmse <- rmse(predicted_ratings, test_set$Rating)
+car_model_bias_rmse
 ```
-As can be observed, adding movie bias to the model decreased the RMSE below 1. 
-This was built upon in future models.
+As can be observed, adding car model bias to the model decreased the RMSE 
+further. This was built upon in future models.
 
-### Adding User Bias
-Next, the users (i.e. the people who rate the movies) are biased in their own 
-way, as certain users will rate movies a certain way. For instance, some users 
-may tend to be overly positive or overly negative in their ratings. Thus, I 
-took this into account with the next model.
+### Adding Car Make Bias
+Next, some types of car makes are more popular than others. People will 
+have "brand loyalty", and be more likely to buy one car make and rate that make 
+higher than others. Thus, I took this into account with the next model.
 
 ```{r}
-# Add user bias to calculation
+# Add car make bias to calculation
 bu <- train_set %>%
-  left_join(bi, by = "movieId") %>%
-  group_by(userId) %>%
-  summarize(b_u = mean(rating - mean_rating - b_i))
+  left_join(bi, by = "Model") %>%
+  group_by(Make) %>%
+  summarize(b_u = mean(Rating - mean_rating - b_i))
 predicted_ratings <- test_set %>%
-  left_join(bi, by = "movieId") %>%
-  left_join(bu, by = "userId") %>%
+  left_join(bi, by = "Model") %>%
+  left_join(bu, by = "Make") %>%
   mutate(pred = mean_rating + b_i + b_u) %>%
   pull(pred)
 ```
 
 ```{r}
-# RMSE calculated with mean, movie, and user bias
-user_bias_rmse <- rmse(predicted_ratings, test_set$rating)
-user_bias_rmse
+# RMSE calculated with mean, car model, and car make bias
+car_make_bias_rmse <- rmse(predicted_ratings, test_set$Rating)
+car_make_bias_rmse
 ```
-Adding user bias to this next model reduced the RMSE further. In fact, this 
-RMSE is below the target set at the beginning of the project, but it is not low 
-enough to be a significant change. Therefore, further models improved on this 
-number.
+Adding car make bias to this next model interestingly did not reduce the RMSE 
+further. In fact, all accounts seem to show that the RMSE was functionally the 
+same. Therefore, further models strived to improve on this number.
 
-### Adding Time Bias
-Movies are also rated differently depending on the time they came out. Movies 
-may not generate as much hype if they come out during a non-peak time, so they 
-will be rated lower. Thus, I accounted for this with the next model by adding 
-time bias into the calculations.
+### Adding Review Year Bias
+Cars are also rated differently depending on when they were reviewed. Some cars 
+may be looked at in a different light depending on how new they are, so they 
+may be rated differently. Thus, I accounted for this with the next model by 
+adding review year bias into the calculations.
 
 ```{r}
-# Add time bias to calculation
+# Add review year bias to calculation
 bt <- train_set %>%
-  mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
-  left_join(bi, by = "movieId") %>%
-  left_join(bu, by = "userId") %>%
-  group_by(date) %>%
-  summarize(b_t = mean(rating - mean_rating - b_i - b_u))
+  left_join(bi, by = "Model") %>%
+  left_join(bu, by = "Make") %>%
+  group_by(Review_Year) %>%
+  summarize(b_t = mean(Rating - mean_rating - b_i - b_u))
 predicted_ratings <- test_set %>%
-  mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
-  left_join(bi, by = "movieId") %>%
-  left_join(bu, by = "userId") %>%
-  left_join(bt, by = "date") %>%
+  left_join(bi, by = "Model") %>%
+  left_join(bu, by = "Make") %>%
+  left_join(bt, by = "Review_Year") %>%
   mutate(pred = mean_rating + b_i + b_u + b_t) %>%
   pull(pred)
 ```
 
 ```{r}
-# RMSE calculated with mean, movie, user, and time bias
-time_bias_rmse <- rmse(predicted_ratings, test_set$rating)
-time_bias_rmse
+# RMSE calculated with mean, car model, car make, and review year bias
+review_year_bias_rmse <- rmse(predicted_ratings, test_set$Rating)
+review_year_bias_rmse
 ```
-Adding time bias to the model made it perform better, but still not by a 
-significant amount. In fact, this improvement was the smallest one yet. 
-Therefore, to decrease the RMSE further, I had to employ a new strategy.
+Adding review year bias to the model made it perform better, but still not by a 
+significant amount. Therefore, to decrease the RMSE further, I had to employ a 
+new strategy.
 
 ## Data Regularization
 Some of the data in any dataset can be "noisy", where large estimates come 
 from small sample sizes. In the case of this dataset, it can mean that there 
-are ratings of obscure movies by only a few users within the dataset. 
+are ratings of obscure cars by only a few users within the dataset. 
 Therefore, I used regularization to penalize these large estimates from 
 small sample sizes. In addition to this, I used cross-validation to find the 
 optimal penalty to use (denoted by lambda) and applied it to the next model 
@@ -341,28 +316,26 @@ generated.
 lambdas <- seq(0, 10, 0.25)
 rmses <- sapply(lambdas, function(x){
   b_i <- train_set %>%
-    group_by(movieId) %>%
-    summarize(b_i = sum(rating - mean_rating)/(n() + x)) # adding movie bias
+    group_by(Model) %>%
+    summarize(b_i = sum(Rating - mean_rating)/(n() + x)) # adding car model bias
   b_u <- train_set %>%
-    left_join(b_i, by = "movieId") %>%
-    group_by(userId) %>%
-    summarize(b_u = sum(rating - b_i - 
-                          mean_rating)/(n() + x)) # adding user bias
+    left_join(b_i, by = "Model") %>%
+    group_by(Make) %>%
+    summarize(b_u = sum(Rating - b_i - 
+                          mean_rating)/(n() + x)) # adding car make bias
   b_t <- train_set %>%
-    mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
-    left_join(b_i, by = "movieId") %>%
-    left_join(b_u, by = "userId") %>%
-    group_by(date) %>%
-    summarize(b_t = mean(rating - b_i - b_u - 
-                           mean_rating)/(n() + x)) # adding time bias
+    left_join(b_i, by = "Model") %>%
+    left_join(b_u, by = "Make") %>%
+    group_by(Review_Year) %>%
+    summarize(b_t = mean(Rating - b_i - b_u - 
+                           mean_rating)/(n() + x)) # adding review year bias
   predicted_ratings <- test_set %>%
-    mutate(date = round_date(as_datetime(timestamp), unit = "week")) %>%
-    left_join(b_i, by = "movieId") %>%
-    left_join(b_u, by = "userId") %>%
-    left_join(b_t, by = "date") %>%
+    left_join(b_i, by = "Model") %>%
+    left_join(b_u, by = "Make") %>%
+    left_join(b_t, by = "Review_Year") %>%
     mutate(pred = mean_rating + b_i + b_u + b_t) %>%
     pull(pred)
-  return(rmse(predicted_ratings, test_set$rating))
+  return(rmse(predicted_ratings, test_set$Rating))
 })
 ```
 
@@ -385,10 +358,9 @@ error (i.e. it is the lowest point on the graph).
 regularized_rmse <- min(rmses)
 regularized_rmse
 ```
-While the RMSE did improve in a greater manner compared to the previous model, 
-it is still quite a small improvement compared to what came before. 
-Additionally, the RMSE is still a rounding error within the target RMSE. 
-To make the RMSE sufficiently low, I had to switch tactics once again.
+Interestingly, the RMSE shows no improvement. In fact, it has increased from 
+what it was before. To make the RMSE sufficiently low, I had to switch tactics 
+once again.
 
 ## Matrix Factorization (using the recosystem package)
 To make the RMSE lower, I turned to matrix factorization, which is a process 
@@ -397,7 +369,9 @@ into two smaller dimensional matrices with less sparsity and latent features.
 This was accomplished by using the recosystem package. The data was 
 converted into the recosystem format, tuned to select the best tuning 
 parameters along a set of candidate values, trained, and finally tested by 
-computing the predicted values.
+computing the predicted values. To this extent, I elected to use the review 
+year and model year for the cars as factors instead of what was used before, as 
+this would make it easier for the recosystem algorithm.
 
 ```{r}
 # Applying matrix factorization using the recosystem package
@@ -405,11 +379,12 @@ if(!require(recosystem)) install.packages(
   "recosystem", repos = "http://cran.us.r-project.org")
 library(recosystem)
 set.seed(1, sample.kind = "Rounding") # using R 3.6 or later
-reco_train <- with(train_set, data_memory(user_index = userId, 
-                                          item_index = movieId, 
-                                          rating = rating))
-reco_test <- with(test_set, data_memory(user_index = userId, 
-                                        item_index = movieId, rating = rating))
+reco_train <- with(train_set, data_memory(user_index = Review_Year, 
+                                          item_index = Model_Year, 
+                                          rating = Rating))
+reco_test <- with(test_set, data_memory(user_index = Review_Year, 
+                                        item_index = Model_Year, 
+                                        rating = Rating))
 reco <- Reco()
 
 reco_para <- reco$tune(reco_train, opts = list(dim = c(20, 30), 
@@ -424,26 +399,29 @@ reco_first <- reco$predict(reco_test, out_memory())
 
 ```{r}
 # RMSE calculated with matrix factorization
-factorization_rmse <- RMSE(reco_first, test_set$rating)
+factorization_rmse <- RMSE(reco_first, test_set$Rating)
 factorization_rmse
 ```
-This RMSE is the best one yet, and the improvement is significant enough that 
-it can be seen as sufficiently lower than the target RMSE. Therefore, this is 
-the process by which I conducted the final holdout test.
+This RMSE is almost the best one yet, and the improvement is significant enough 
+that it can be the method by which I proceed. Therefore, this is the process by 
+which I conducted the final holdout test.
 
 ## Final Holdout Test
-Because I determined that this method would be the ideal method to conduct the 
+Because I determined that this method would be the method to conduct the 
 final holdout test with, I trained the model using the edx set and tested it 
 using the final_holdout_test set.
 
 ```{r}
 # Using matrix factorization on final holdout test
 set.seed(1, sample.kind = "Rounding") # using R 3.6 or later
-reco_edx <- with(edx, data_memory(user_index = userId, item_index = movieId, 
-                                  rating = rating))
-reco_final_holdout <- with(final_holdout_test, data_memory(user_index = userId, 
-                                                           item_index = movieId, 
-                                                           rating = rating))
+reco_edx <- with(edx, data_memory(user_index = Review_Year, 
+                                  item_index = Model_Year, 
+                                  rating = Rating))
+reco_final_holdout <- with(final_holdout_test, data_memory(user_index = 
+                                                             Review_Year, 
+                                                           item_index = 
+                                                             Model_Year, 
+                                                           rating = Rating))
 reco <- Reco()
 
 reco_para <- reco$tune(reco_edx, opts = list(dim = c(20, 30), 
@@ -458,7 +436,7 @@ reco_final <- reco$predict(reco_final_holdout, out_memory())
 
 ```{r}
 # Generating final RMSE
-final_rmse <- RMSE(reco_final, final_holdout_test$rating)
+final_rmse <- RMSE(reco_final, final_holdout_test$Rating)
 final_rmse
 ```
 This is the final RMSE, generated using the final_holdout_test dataset. No 
@@ -505,30 +483,32 @@ saveWidget(widget = table, file = "table_html.html", selfcontained = TRUE)
 webshot(url = "table_html.html", file = "final_table.png", delay = 0.1, 
         vwidth = 1245)
 ```
-As can be observed, the final RMSE generated was significantly lower than the 
-target RMSE of 0.86490. I tested several models, but achieved the best results 
-using matrix factorization with the recosystem package. Therefore, matrix 
-factorization, at least concerning this model, was the best option which 
-provided an optimal movie recommendation system by the metrics tested by this 
-project, that being the RMSE.
+As can be observed, the final RMSE generated was low, but not as low as I 
+expected. I tested several models, but achieved the best results 
+just accounting for car model, car make, and review year biases. Therefore, 
+just accounting for various biases that can occur, at least concerning this 
+model, was the best option which provided an optimal car rating prediction 
+system by the metrics tested by this project, that being the RMSE.
 
 # Conclusion
-To conclude this project, I set out to make a movie recommendation software 
+To conclude this project, I set out to make a car rating prediction software 
 using machine learning algorithms. This was accomplished by using data 
 exploration to better understand the data I was working with, and then 
-data analysis in order to eliminate various types of biases in movie rating, 
+data analysis in order to eliminate various types of biases in car rating, 
 regularize the data, and finally utilize matrix factorization in order to 
-make the best movie recommendation system that I could. Keeping in mind that 
-the RMSE goal set was 0.86490, I achieved an RMSE lower than this by a not 
-insignificant amount, which I find to be a success. 
+make the best car rating prediction system that I could. Though this project 
+had no specific goal RMSE, I feel that the RMSE I acheived was as ideal as I 
+could achieve.
 
-However, some limitations of the project include factoring in time bias. 
-This increased the runtime of the program by a significant amount, for not much 
-gain in return, in terms of how much the RMSE was lowered. In general, the 
-runtime of the code could be reduced in a number of places, but this was the 
-biggest detractor in that regard. In addition to this, to state the obvious, 
-this project is simply the first step in making software that can actually 
-predict the ratings of movies before they even come out.
+However, some limitations of the project include the size of the dataset that 
+was used. This dataset only included 37 thousand data points, which is not 
+ideal for generating predictions like what was accomplished in this project. 
+This must have accounted for the fact that the RMSEs of each test/algorithm 
+were varying in ways that I personally did not expect. In the future, I will 
+certainly strive to utilize datasets that have more data points. In addition 
+to this, to state the obvious, this project is simply the first step in making 
+software that can actually predict the ratings of cars before they even 
+come out.
 
 In the future, this project can be used as a shell or stepping stone for other 
 machine learning algorithms to predict other forms of ratings. For instance, it 
